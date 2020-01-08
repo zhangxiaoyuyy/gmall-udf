@@ -1,0 +1,71 @@
+package com.bawei.udtf;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.udf.generic.GenericUDTF;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
+import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
+import org.json.JSONArray;
+import org.json.JSONException;
+
+import java.util.ArrayList;
+
+public class EventJsonUDTF  extends GenericUDTF {
+
+    public StructObjectInspector initialize(StructObjectInspector argOIs){
+        ArrayList<String> arrayList = new ArrayList<>();
+        ArrayList<ObjectInspector> fileOIs = new ArrayList<>();
+
+        arrayList.add("event_name");
+        fileOIs.add(PrimitiveObjectInspectorFactory.javaStringObjectInspector);
+        arrayList.add("event_json");
+        fileOIs.add(PrimitiveObjectInspectorFactory.javaStringObjectInspector);
+        return ObjectInspectorFactory.getStandardStructObjectInspector(arrayList,fileOIs);
+    }
+
+    @Override
+    public void process(Object[] objects) throws HiveException {
+        //1.获取传入的
+        String input = objects[0].toString();
+
+        //2.判断，是否为空
+        if(StringUtils.isBlank(input)){
+            return ;
+        }else{
+
+            try {
+                //获取几个事件
+                JSONArray jsonObject = new JSONArray(input);
+
+                if(jsonObject == null){
+                    return;
+                }
+                //遍历每一个事件
+                for (int i = 0;i<jsonObject.length();i++){
+                    String[] result = new String[2];
+                    try {
+                        result[0] = jsonObject.getJSONObject(i).getString("en");
+                        //取出每一个事件整体
+                        result[1] = jsonObject.getString(i);
+                    }catch (JSONException e){
+                        continue;
+                    }
+                  forward(result);
+                }
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+
+        }
+
+    }
+
+    @Override
+    public void close() throws HiveException {
+
+    }
+}
